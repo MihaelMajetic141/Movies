@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 @HiltViewModel
 class MovieDetailsViewModel @Inject constructor(
     private val movieRepository: MovieRepository,
@@ -21,6 +20,12 @@ class MovieDetailsViewModel @Inject constructor(
 
     private val _viewState = MutableStateFlow<MovieDetailsViewState>(MovieDetailsViewState.Loading)
     var viewState: StateFlow<MovieDetailsViewState> = _viewState.asStateFlow()
+
+    private val _isMovieInWatchList = MutableStateFlow(false)
+    var isMovieInWatchList: StateFlow<Boolean> = _isMovieInWatchList.asStateFlow()
+
+    private val _isMovieInFavorites = MutableStateFlow(false)
+    var isMovieInFavorites: StateFlow<Boolean> = _isMovieInFavorites.asStateFlow()
 
     fun fetchInitialData(id: Long) = viewModelScope.launch {
         try {
@@ -39,4 +44,22 @@ class MovieDetailsViewModel @Inject constructor(
         }
     }
 
+    fun checkIfMovieIsInWatchList(movieId: Long, username: String, accessToken: String) = viewModelScope.launch {
+        val movie = movieRepository.fetchMovieById(movieId)
+        val watchList = movieRepository.getWatchLaterMovies(username, "Bearer $accessToken")
+        if (movie != null && watchList != null) {
+            val isMovieInWatchList = watchList.any { it.id == movie.id }
+            return@launch _isMovieInWatchList.update { isMovieInWatchList }
+        } else return@launch _isMovieInWatchList.update { false }
+    }
+
+    fun checkIfMovieIsInFavorites(movieId: Long, username: String, accessToken: String) = viewModelScope.launch {
+        val movie = movieRepository.fetchMovieById(movieId)
+        val favorites = movieRepository.getLikedMovies(username, "Bearer $accessToken")
+        if (movie != null && favorites != null) {
+            val isMovieInFavorites = favorites.any { it.id == movie.id }
+            return@launch _isMovieInFavorites.update { isMovieInFavorites }
+        } else return@launch _isMovieInFavorites.update { false }
+    }
 }
+

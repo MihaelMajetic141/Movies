@@ -277,7 +277,8 @@ fun UserProfileScreen(
                             fontSize = 16.sp,
                             modifier = Modifier
                                 .padding(10.dp)
-                                .clickable { navController.navigate("movies/create_list/$username") }
+                                .clickable { navController.navigate(
+                                    route = "movies/create_list/$username") }
                         )
                     }
 
@@ -580,7 +581,6 @@ fun UserProfileScreen(
                             }
                         }
                     }
-
                     RecommendationsViewState.Empty -> {}
                 }
             }
@@ -767,7 +767,7 @@ fun NoUserProfileScreen(
                             modifier = Modifier.height(33.dp)
                         )
                         Spacer(modifier = Modifier.height(10.dp))
-                        Text(text = "Sign in to access your Recommendations list",
+                        Text(text = "Sign in to access your Recommendations",
                             color = Color.White,
                             fontSize = 20.sp)
                         Spacer(modifier = Modifier.height(16.dp))
@@ -778,7 +778,7 @@ fun NoUserProfileScreen(
                             textAlign = TextAlign.Center)
                         Spacer(modifier = Modifier.height(10.dp))
                         Button(
-                            onClick = { navController.navigate("user/login") },
+                            onClick = { navController.navigate("movies/login") },
                             colors = ButtonDefaults.buttonColors(primaryContainerDark)
                         ) {
                             Text(text = "Sign In", color = Color.LightGray)

@@ -59,7 +59,7 @@ fun CategoryScreen(
         CategoryViewModel.CategoryViewState.Loading -> LoadingState(modifier = Modifier)
 
         is CategoryViewModel.CategoryViewState.Success -> {
-            Spacer(modifier = Modifier.height(50.dp))
+            Spacer(modifier = Modifier.height(75.dp))
             MovieVerticalGrid(
                 navController = navController,
                 scrollState = scrollState,

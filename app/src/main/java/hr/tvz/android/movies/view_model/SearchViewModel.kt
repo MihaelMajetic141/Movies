@@ -44,7 +44,7 @@ class SearchViewModel @Inject constructor(
         } else _searchViewState.update { SearchViewState.Error("Error fetching movies") }
     }
 
-    fun fetchNextSearchPage(searchString: String) = viewModelScope.launch {
+    suspend fun fetchNextSearchPage(searchString: String) = viewModelScope.launch {
         try {
             _searchedMoviesPage.value += 1
             val response = movieRepository.searchMovies(searchString, _searchedMoviesPage.value)

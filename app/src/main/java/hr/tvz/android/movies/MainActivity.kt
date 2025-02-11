@@ -293,9 +293,11 @@ class MainActivity : ComponentActivity() {
                     backStackEntry.arguments?.getLong("movieId") ?: -1
                 MovieDetailsScreen(
                     movieDetailsViewModel = movieDetailsViewModel,
+                    authViewModel = authViewModel,
+                    profileViewModel = profileViewModel,
                     movieId = movieId,
                     navController = navController,
-                    topAppBarState = topAppBarState,
+                    topAppBarState = topAppBarState
                 )
             }
 

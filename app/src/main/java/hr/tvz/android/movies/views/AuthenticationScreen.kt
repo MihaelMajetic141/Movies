@@ -133,7 +133,7 @@ fun LoginScreen(
                     GoogleSignIn.getClient(
                         context,
                         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                            .requestIdToken("apps.googleusercontent.com")
+                            .requestIdToken("201669699934-h8a2odi5mlqgfd2gtl6n1tlg4hvpr90f.apps.googleusercontent.com")
                             .requestEmail()
                             .build()
                     )
@@ -197,13 +197,12 @@ fun RegistrationScreen(
     val password by authViewModel.password.collectAsState()
     val confirmPassword by authViewModel.confirmPassword.collectAsState()
     val registrationResponse by authViewModel.authState.collectAsState()
-    //ToDO: val registrationResponse by viewModel.authState.collectAsState()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 
     Box(modifier = Modifier
         .fillMaxSize()
-        .background(primaryLightHighContrast)) { }
+        .background(primaryLightHighContrast)) {}
 
     Column(
         modifier = Modifier
@@ -273,7 +272,7 @@ fun RegistrationScreen(
                     GoogleSignIn.getClient(
                         context,
                         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                            .requestIdToken("apps.googleusercontent.com")
+                            .requestIdToken("201669699934-h8a2odi5mlqgfd2gtl6n1tlg4hvpr90f.apps.googleusercontent.com")
                             .requestEmail()
                             .build()
                     )

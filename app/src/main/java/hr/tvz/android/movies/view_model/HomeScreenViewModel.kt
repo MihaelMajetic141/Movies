@@ -57,6 +57,25 @@ class HomeScreenViewModel @Inject constructor(
     private val _recommendedMoviesPage: MutableStateFlow<Int> = MutableStateFlow(0)
     var recommendedMoviesPage: StateFlow<Int> = _recommendedMoviesPage
 
+    val allCategoriesList = listOf("Drama",
+        "History",
+        "Romance",
+        "Horror",
+        "Mystery",
+        "Thriller",
+        "Comedy",
+        "Family",
+        "Fantasy",
+        "Documentary",
+        "Action",
+        "Adventure",
+        "Western",
+        "Crime",
+        "Music",
+        "Musical",
+        "War", "Biography", "Sci-Fi", "Film-Noir", "Animation", "Sport", "News"
+    )
+
     suspend fun fetchInitialData() {
         viewModelScope.launch {
             _topRatedMoviesPage.value = 0

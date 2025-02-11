@@ -17,12 +17,16 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.WatchLater
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -34,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +50,9 @@ import hr.tvz.android.movies.ui.theme.primaryContainerDark
 import hr.tvz.android.movies.data.model.Movie
 import hr.tvz.android.movies.view_model.MovieDetailsViewModel
 import hr.tvz.android.movies.TopAppBarState
+import hr.tvz.android.movies.data.DataStoreManager
+import hr.tvz.android.movies.view_model.AuthViewModel
+import hr.tvz.android.movies.view_model.ProfileViewModel
 import hr.tvz.android.movies.views.elements.CategoriesLazyRow
 import hr.tvz.android.movies.views.elements.LoadingState
 import hr.tvz.android.movies.views.elements.MoviesRowSection
@@ -62,6 +71,8 @@ sealed interface MovieDetailsViewState {
 @Composable
 fun MovieDetailsScreen(
     movieDetailsViewModel: MovieDetailsViewModel,
+    authViewModel: AuthViewModel,
+    profileViewModel: ProfileViewModel,
     movieId: Long,
     navController: NavController,
     topAppBarState: MutableState<TopAppBarState>,
@@ -72,16 +83,13 @@ fun MovieDetailsScreen(
         title = "Movie Details",
     )
 
-    val viewModelState by movieDetailsViewModel.viewState.collectAsState()
+    val movieDetailsViewState by movieDetailsViewModel.viewState.collectAsState()
 
     LaunchedEffect(key1 = movieDetailsViewModel) {
         movieDetailsViewModel.fetchInitialData(movieId)
     }
 
-
-    val recommendedMoviesScrollState = rememberLazyListState()
-
-    when(val viewState = viewModelState) {
+    when (val viewState = movieDetailsViewState) {
         is MovieDetailsViewState.Loading -> {
             LoadingState(modifier = Modifier)
         }
@@ -95,6 +103,17 @@ fun MovieDetailsScreen(
 
                 // Image, icons
                 item {
+                    val isUserLoggedIn by authViewModel
+                        .isUserLoggedIn.collectAsState()
+                    val isMovieInWatchList by movieDetailsViewModel
+                        .isMovieInWatchList.collectAsState()
+                    val isMovieInFavorites by movieDetailsViewModel
+                        .isMovieInFavorites.collectAsState()
+                    val context = LocalContext.current
+                    val dataStore = DataStoreManager(LocalContext.current)
+                    val username by dataStore.userName.collectAsState(initial = "")
+                    val accessToken by dataStore.accessToken.collectAsState(initial = "")
+
                     Box(modifier = Modifier
                         .height(300.dp)
                         .fillMaxWidth()
@@ -112,59 +131,170 @@ fun MovieDetailsScreen(
                             .width(58.dp)
                             .align(Alignment.TopEnd)
                         ) {
+                            var showLoginPopUp by remember { mutableStateOf(false) }
+
                             Spacer(modifier = Modifier.height(60.dp))
-                            var toggleWatchLaterButton by remember {
-                                mutableStateOf(true)
+                            if (isUserLoggedIn) {
+                                LaunchedEffect(key1 = username) {
+                                    username?.let {
+                                        accessToken?.let { it1 ->
+                                            movieDetailsViewModel.checkIfMovieIsInWatchList(movieId,
+                                                it, it1
+                                            )
+                                        }
+                                    }
+                                }
+                                LaunchedEffect(key1 = username) {
+                                    username?.let {
+                                        accessToken?.let { it1 ->
+                                            movieDetailsViewModel.checkIfMovieIsInFavorites(movieId,
+                                                it, it1
+                                            )
+                                        }
+                                    }
+                                }
+                                when (isMovieInWatchList) {
+                                    true -> {
+                                        IconButton(
+                                            onClick = {
+                                                username?.let { username ->
+                                                    accessToken?.let { token ->
+                                                        profileViewModel.removeMovieFromWatchList(
+                                                            movieId = movieId,
+                                                            context = context,
+                                                            username = username,
+                                                            accessToken = token
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .padding(5.dp),
+                                            content = {
+                                                Icon(
+                                                    imageVector = Icons.Default.WatchLater,
+                                                    contentDescription = "Remove from Watchlist",
+                                                    tint = Color.White
+                                                )
+                                            }
+                                        )
+                                    }
+                                    false -> {
+                                        IconButton(
+                                            onClick = {
+                                                username?.let { username ->
+                                                    accessToken?.let { token ->
+                                                        profileViewModel.addMovieToWatchList(
+                                                            movieId = movieId,
+                                                            context = context,
+                                                            username = username,
+                                                            accessToken = token
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .padding(5.dp),
+                                            content = {
+                                                Icon(
+                                                    imageVector = Icons.Default.WatchLater,
+                                                    contentDescription = "Add to Watchlist",
+                                                    tint = Color.Black
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                                when (isMovieInFavorites) {
+                                    true -> {
+                                        IconButton(
+                                            onClick = {
+                                                username?.let { username ->
+                                                    accessToken?.let { token ->
+                                                        profileViewModel.removeMovieFromFavorites(
+                                                            movieId = movieId,
+                                                            context = context,
+                                                            username = username,
+                                                            accessToken = token
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .padding(5.dp),
+                                            content = {
+                                                Icon(
+                                                    imageVector = Icons.Default.ThumbUp,
+                                                    contentDescription = "Remove from Favorites",
+                                                    tint = Color.White
+                                                )
+                                            }
+                                        )
+                                    }
+                                    false -> {
+                                        IconButton(
+                                            onClick = {
+                                                username?.let { username ->
+                                                    accessToken?.let { token ->
+                                                        profileViewModel.addMovieToFavorites(
+                                                            movieId = movieId,
+                                                            context = context,
+                                                            username = username,
+                                                            accessToken = token
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .padding(5.dp),
+                                            content = {
+                                                Icon(
+                                                    imageVector = Icons.Default.ThumbUp,
+                                                    contentDescription = "Add to Favorites",
+                                                    tint = Color.Black
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
                             }
-                            IconButton(
-                                onClick = {
-                                    /*TODO: Add to user's liked list and change color if added */
-                                    toggleWatchLaterButton = !toggleWatchLaterButton
-                                },
-                                modifier = Modifier
-                                    .padding(5.dp),
-                                content = {
-                                    if (toggleWatchLaterButton) {
+                            else {
+                                if (showLoginPopUp){
+                                    AlertDialogExample(
+                                        onDismissRequest = { showLoginPopUp = false },
+                                        onConfirmation = {
+                                            navController.navigate("movies/login")
+                                            showLoginPopUp = false
+                                        },
+                                        dialogTitle = "Login required",
+                                        dialogText = "You need to be logged in to add movies to lists.",
+                                        icon = Icons.AutoMirrored.Filled.Login
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { showLoginPopUp = true},
+                                    content = {
                                         Icon(
                                             imageVector = Icons.Default.WatchLater,
                                             contentDescription = "Add to Watch Later list",
                                             tint = Color.White
                                         )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.WatchLater,
-                                            contentDescription = "Remove from Watch Later list",
-                                            tint = Color.Black
-                                        )
-                                    }
-                                }
-                            )
-                            var toggleLikeButton by remember {
-                                mutableStateOf(true)
-                            }
-                            IconButton(
-                                onClick = {
-                                    /*TODO: Add to user's liked list and change color if added */
-                                    toggleLikeButton = !toggleLikeButton
-                                },
-                                modifier = Modifier
-                                    .padding(5.dp),
-                                content = {
-                                    if (toggleLikeButton) {
+                                    },
+                                    modifier = Modifier.padding(5.dp)
+                                )
+                                IconButton(
+                                    onClick = { showLoginPopUp = true },
+                                    modifier = Modifier
+                                        .padding(5.dp),
+                                    content = {
                                         Icon(
                                             imageVector = Icons.Default.ThumbUp,
                                             contentDescription = "Add to Liked list",
                                             tint = Color.White
                                         )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.ThumbUp,
-                                            contentDescription = "Remove from Liked list",
-                                            tint = Color.Black
-                                        )
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
@@ -181,7 +311,7 @@ fun MovieDetailsScreen(
                                 fontSize = 33.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
-                                    .basicMarquee() // ToDo: Check how this works
+                                    .basicMarquee()
                                     .padding(top = 14.dp)
                             )
                         }
@@ -283,14 +413,13 @@ fun MovieDetailsScreen(
                                 .height(80.dp)
                                 .padding(all = 14.dp),
                             content = {
-                                items(stars.size) {
-                                    stars.forEach() {
+                                stars.forEach() {
+                                    item {
                                         Text(
                                             text = it,
                                             color = Color.White,
-                                            fontSize = 20.sp,
                                             modifier = Modifier
-                                                .padding(5.dp)
+                                                .padding(horizontal = 14.dp)
                                                 .background(
                                                     color = primaryContainerDark,
                                                     shape = CircleShape
@@ -320,14 +449,13 @@ fun MovieDetailsScreen(
                                 .height(80.dp)
                                 .padding(all = 14.dp),
                             content = {
-                                items(directors.size) {
-                                    directors.forEach() {
+                                directors.forEach() {
+                                    item {
                                         Text(
                                             text = it,
                                             color = Color.White,
-                                            fontSize = 20.sp,
                                             modifier = Modifier
-                                                .padding(5.dp)
+                                                .padding(horizontal = 14.dp)
                                                 .background(
                                                     color = primaryContainerDark,
                                                     shape = CircleShape
@@ -357,14 +485,13 @@ fun MovieDetailsScreen(
                                 .height(80.dp)
                                 .padding(all = 14.dp),
                             content = {
-                                items(writers.size) {
-                                    writers.forEach() {
+                                writers.forEach() {
+                                    item {
                                         Text(
                                             text = it,
                                             color = Color.White,
-                                            fontSize = 20.sp,
                                             modifier = Modifier
-                                                .padding(5.dp)
+                                                .padding(horizontal = 14.dp)
                                                 .background(
                                                     color = primaryContainerDark,
                                                     shape = CircleShape
@@ -377,6 +504,7 @@ fun MovieDetailsScreen(
                     }
                 }
                 item {
+                    val recommendedMoviesScrollState = rememberLazyListState()
                     MoviesRowSection(
                         header = "More Like This",
                         lazyListState = recommendedMoviesScrollState,
@@ -391,4 +519,46 @@ fun MovieDetailsScreen(
             Text(text = viewState.msg)
         }
     }
+}
+
+@Composable
+fun AlertDialogExample(
+    onDismissRequest: () -> Unit,
+    onConfirmation: () -> Unit,
+    dialogTitle: String,
+    dialogText: String,
+    icon: ImageVector,
+) {
+    AlertDialog(
+        icon = {
+            Icon(icon, contentDescription = "Login icon")
+        },
+        title = {
+            Text(text = dialogTitle)
+        },
+        text = {
+            Text(text = dialogText)
+        },
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirmation()
+                }
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                }
+            ) {
+                Text("Dismiss")
+            }
+        }
+    )
 }

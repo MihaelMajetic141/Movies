@@ -42,7 +42,7 @@ fun CategoriesLazyRow(
                             color = Color.White,
                             modifier = modifier
                                 .background(
-                                    color = primaryContainerDark, // ToDo: Define color in theme
+                                    color = primaryContainerDark,
                                     shape = CircleShape
                                 )
                                 .padding(horizontal = 14.dp)

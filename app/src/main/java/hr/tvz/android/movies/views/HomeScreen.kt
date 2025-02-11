@@ -261,7 +261,7 @@ fun HomeScreen(
                     // item { ImageSlider(viewState.topRatedMoviesList) }
                     item {
                         CategoriesLazyRow(
-                            categoryList = allCategoriesList,
+                            categoryList = homeScreenViewModel.allCategoriesList,
                             onCategoryClick = {
                                 navController.navigate("movies/category/$it") },
                             modifier = Modifier.padding(top = 10.dp)
@@ -304,7 +304,6 @@ fun HomeScreen(
                                 Box(modifier = Modifier
                                     .fillMaxWidth()
                                     .height(220.dp)
-                                    .padding(5.dp)
                                     .background(color = primaryLightHighContrast),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -385,7 +384,6 @@ fun HomeScreen(
                                 Box(modifier = Modifier
                                     .fillMaxWidth()
                                     .height(281.dp)
-                                    .padding(5.dp)
                                     .background(color = primaryLightHighContrast),
                                     contentAlignment = Alignment.Center
                                 ) {
