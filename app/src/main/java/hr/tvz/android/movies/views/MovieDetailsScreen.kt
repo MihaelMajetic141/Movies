@@ -2,6 +2,7 @@ package hr.tvz.android.movies.views
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.WatchLater
@@ -53,7 +53,7 @@ import hr.tvz.android.movies.TopAppBarState
 import hr.tvz.android.movies.data.DataStoreManager
 import hr.tvz.android.movies.view_model.AuthViewModel
 import hr.tvz.android.movies.view_model.ProfileViewModel
-import hr.tvz.android.movies.views.elements.CategoriesLazyRow
+import hr.tvz.android.movies.views.elements.TextLazyRow
 import hr.tvz.android.movies.views.elements.LoadingState
 import hr.tvz.android.movies.views.elements.MoviesRowSection
 import hr.tvz.android.movies.views.elements.TopBarInit
@@ -321,9 +321,9 @@ fun MovieDetailsScreen(
                 //Genres
                 item {
                     val genres: List<String> = viewState.movie.genres.split("|").toList()
-                    CategoriesLazyRow(
+                    TextLazyRow(
                         categoryList = genres,
-                        onCategoryClick = { navController.navigate("movies/category/$it") },
+                        onClick = { navController.navigate("movies/category/$it") },
                         modifier = Modifier.padding(10.dp)
                     )
                 }
@@ -407,27 +407,10 @@ fun MovieDetailsScreen(
                         )
                         val stars: Set<String> = viewState.movie.stars
                             .split("|").toSet()
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(80.dp)
-                                .padding(all = 14.dp),
-                            content = {
-                                stars.forEach() {
-                                    item {
-                                        Text(
-                                            text = it,
-                                            color = Color.White,
-                                            modifier = Modifier
-                                                .padding(horizontal = 14.dp)
-                                                .background(
-                                                    color = primaryContainerDark,
-                                                    shape = CircleShape
-                                                )
-                                        )
-                                    }
-                                }
-                            }
+                        TextLazyRow(
+                            categoryList = stars.toList(),
+                            onClick = {},
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }
@@ -439,31 +422,14 @@ fun MovieDetailsScreen(
                             text = "Directors",
                             color = Color.White,
                             fontSize = 24.sp,
-                            modifier = Modifier.padding(all = 14.dp)
+                            modifier = Modifier.padding(14.dp)
                         )
                         val directors: Set<String> = viewState.movie.directors
                             .split("|").toSet()
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(80.dp)
-                                .padding(all = 14.dp),
-                            content = {
-                                directors.forEach() {
-                                    item {
-                                        Text(
-                                            text = it,
-                                            color = Color.White,
-                                            modifier = Modifier
-                                                .padding(horizontal = 14.dp)
-                                                .background(
-                                                    color = primaryContainerDark,
-                                                    shape = CircleShape
-                                                )
-                                        )
-                                    }
-                                }
-                            }
+                        TextLazyRow(
+                            categoryList = directors.toList(),
+                            onClick = {},
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }
@@ -475,31 +441,14 @@ fun MovieDetailsScreen(
                             text = "Writers",
                             color = Color.White,
                             fontSize = 24.sp,
-                            modifier = Modifier.padding(all = 14.dp)
+                            modifier = Modifier.padding(14.dp)
                         )
                         val writers: Set<String> = viewState.movie.writers
                             .split("|").toSet()
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(80.dp)
-                                .padding(all = 14.dp),
-                            content = {
-                                writers.forEach() {
-                                    item {
-                                        Text(
-                                            text = it,
-                                            color = Color.White,
-                                            modifier = Modifier
-                                                .padding(horizontal = 14.dp)
-                                                .background(
-                                                    color = primaryContainerDark,
-                                                    shape = CircleShape
-                                                )
-                                        )
-                                    }
-                                }
-                            }
+                        TextLazyRow(
+                            categoryList = writers.toList(),
+                            onClick = {},
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
                 }
@@ -510,7 +459,7 @@ fun MovieDetailsScreen(
                         lazyListState = recommendedMoviesScrollState,
                         movieList = viewState.recommendedMovies,
                         navController = navController,
-                        modifier = Modifier.padding(all = 14.dp)
+                        modifier = Modifier.padding(14.dp)
                     )
                 }
             }

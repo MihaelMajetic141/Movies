@@ -1,6 +1,8 @@
 package hr.tvz.android.movies.views
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Text
@@ -59,12 +61,14 @@ fun CategoryScreen(
         CategoryViewModel.CategoryViewState.Loading -> LoadingState(modifier = Modifier)
 
         is CategoryViewModel.CategoryViewState.Success -> {
-            Spacer(modifier = Modifier.height(75.dp))
-            MovieVerticalGrid(
-                navController = navController,
-                scrollState = scrollState,
-                viewState = viewState,
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.height(60.dp))
+                MovieVerticalGrid(
+                    navController = navController,
+                    scrollState = scrollState,
+                    viewState = viewState,
+                )
+            }
         }
 
         is CategoryViewModel.CategoryViewState.Error -> {

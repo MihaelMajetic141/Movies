@@ -57,7 +57,8 @@ class HomeScreenViewModel @Inject constructor(
     private val _recommendedMoviesPage: MutableStateFlow<Int> = MutableStateFlow(0)
     var recommendedMoviesPage: StateFlow<Int> = _recommendedMoviesPage
 
-    val allCategoriesList = listOf("Drama",
+    val allCategoriesList = listOf(
+        "Drama",
         "History",
         "Romance",
         "Horror",

@@ -15,10 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -66,7 +70,7 @@ import hr.tvz.android.movies.ui.theme.primaryContainerDark
 import hr.tvz.android.movies.ui.theme.primaryContainerLightMediumContrast
 import hr.tvz.android.movies.ui.theme.primaryLightHighContrast
 import hr.tvz.android.movies.view_model.AuthViewModel
-import hr.tvz.android.movies.views.elements.CategoriesLazyRow
+import hr.tvz.android.movies.views.elements.TextLazyRow
 import hr.tvz.android.movies.views.elements.LoadingState
 import hr.tvz.android.movies.views.elements.MoviesRowSection
 import hr.tvz.android.movies.views.elements.TopAppBarWithMenuInit
@@ -77,11 +81,12 @@ import hr.tvz.android.movies.view_model.SearchViewModel
 import hr.tvz.android.movies.view_model.SearchViewState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import kotlin.math.absoluteValue
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun HomeScreen(
     homeScreenViewModel: HomeScreenViewModel,
@@ -167,7 +172,15 @@ fun HomeScreen(
             homeScreenViewModel.fetchNextNewMoviesPage()
         }
     }
-
+    LaunchedEffect(key1 = fetchNextRecommendedMoviesPage) {
+        if (fetchNextRecommendedMoviesPage) {
+            username?.let { accessToken?.let { it1 ->
+                homeScreenViewModel.fetchMoreRecommendedMovies(it,
+                    it1
+                )
+            } }
+        }
+    }
     LaunchedEffect(key1 = accessToken) {
         username?.let { accessToken?.let { it1 ->
             homeScreenViewModel.fetchRecommendedMovies(it,
@@ -179,22 +192,36 @@ fun HomeScreen(
     when (val viewState = homeScreenViewState) {
         is HomeScreenViewState.Loading -> LoadingState(Modifier)
         is HomeScreenViewState.Success -> {
-            LaunchedEffect(key1 = fetchNextRecommendedMoviesPage) {
-                if (fetchNextRecommendedMoviesPage) {
-                    username?.let { accessToken?.let { it1 ->
-                        homeScreenViewModel.fetchMoreRecommendedMovies(it,
-                            it1
-                        )
-                    } }
-                }
-            }
 
-            Column(
-                Modifier
+            var isRefreshing by remember { mutableStateOf(false) }
+            val refreshState = rememberPullRefreshState(
+                refreshing = isRefreshing,
+                onRefresh = {
+                    coroutineScope.launch {
+                        isRefreshing = true
+                        homeScreenViewModel.fetchInitialData()
+                        username?.let { accessToken?.let { it1 ->
+                            homeScreenViewModel.fetchMoreRecommendedMovies(it,
+                                it1
+                            )
+                        } }
+                        isRefreshing = false
+                        newMoviesScrollState.scrollToItem(0)
+                        topRatedScrollState.scrollToItem(0)
+                        recommendedMoviesScrollState.scrollToItem(0)
+                    }
+                }
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
                     .padding(vertical = 30.dp)
-                    .background(onPrimaryDark)) {
-                Spacer(modifier = Modifier.height(40.dp))
+                    .background(onPrimaryDark)
+                    .pullRefresh(refreshState)
+            ) {
                 SearchBar(
+                    modifier = Modifier.align(Alignment.TopCenter)
+                        .padding(vertical = 30.dp),
                     query = searchInputText,
                     onQueryChange = { searchInputText = it},
                     onSearch = {
@@ -224,7 +251,6 @@ fun HomeScreen(
                             )
                         }
                     },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
                     content = {
                         when(searchViewState) {
                             is SearchViewState.Loading -> {
@@ -237,7 +263,7 @@ fun HomeScreen(
                                 else {
                                     SearchedMoviesLazyColumn(
                                         movies = (searchViewState as SearchViewState
-                                            .SearchResultsFetched).searchResults,
+                                        .SearchResultsFetched).searchResults,
                                         lazyListState = searchScrollState,
                                         navController = navController,
                                         modifier = Modifier.height(300.dp)
@@ -256,15 +282,15 @@ fun HomeScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp)
+                        .padding(top = 100.dp),
                 ) {
                     // item { ImageSlider(viewState.topRatedMoviesList) }
                     item {
-                        CategoriesLazyRow(
+                        TextLazyRow(
                             categoryList = homeScreenViewModel.allCategoriesList,
-                            onCategoryClick = {
+                            onClick = {
                                 navController.navigate("movies/category/$it") },
-                            modifier = Modifier.padding(top = 10.dp)
+                            modifier = Modifier.padding(top = 10.dp, end = 10.dp)
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -303,6 +329,7 @@ fun HomeScreen(
                                 )
                                 Box(modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(top = 10.dp)
                                     .height(220.dp)
                                     .background(color = primaryLightHighContrast),
                                     contentAlignment = Alignment.Center
@@ -340,7 +367,10 @@ fun HomeScreen(
 
                                     }
                                     else {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.padding(top = 5.dp)
+                                        ) {
                                             Icon(
                                                 imageVector = Icons.Default.AddCircleOutline,
                                                 contentDescription = "Add icon",
@@ -409,7 +439,21 @@ fun HomeScreen(
                     }
 
                 }
+
+                PullRefreshIndicator(
+                    refreshing = isRefreshing,
+                    state = refreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
             }
+
+//            Column(
+//                Modifier
+//                    .padding(vertical = 30.dp)
+//                    .background(onPrimaryDark)
+//            ) {
+//
+//            }
         }
 
         is HomeScreenViewState.Error -> Text(text = "Error")

@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.sp
 import hr.tvz.android.movies.ui.theme.primaryContainerDark
 
 @Composable
-fun CategoriesLazyRow(
+fun TextLazyRow(
     categoryList: List<String>,
-    onCategoryClick: (String) -> Unit,
+    onClick: (String) -> Unit,
     modifier: Modifier
 ) {
     Column(
@@ -30,7 +30,6 @@ fun CategoriesLazyRow(
             fontSize = 24.sp,
             color = Color.White,
             modifier = modifier
-                .padding(top = 10.dp)
         )
         LazyRow(
             modifier = modifier.fillMaxWidth(),
@@ -43,10 +42,9 @@ fun CategoriesLazyRow(
                             modifier = modifier
                                 .background(
                                     color = primaryContainerDark,
-                                    shape = CircleShape
-                                )
+                                    shape = CircleShape)
                                 .padding(horizontal = 14.dp)
-                                .clickable { onCategoryClick(it) }
+                                .clickable { onClick(it) }
                         )
                     }
                 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircleOutline
@@ -27,6 +28,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WatchLater
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,6 +87,7 @@ import hr.tvz.android.movies.views.elements.MovieCard
 import hr.tvz.android.movies.views.elements.TopAppBarWithMenuInit
 import hr.tvz.android.movies.views.elements.TopBarInit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -113,6 +119,7 @@ fun ProfileScreen(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun UserProfileScreen(
     profileViewModel: ProfileViewModel,
@@ -130,12 +137,15 @@ fun UserProfileScreen(
     val userPicture by dataStoreManager.userPicture.collectAsState(initial = "")
     val profileViewState by profileViewModel.profileViewState.collectAsState()
     val recommendationsViewState by profileViewModel.recommendationsViewState.collectAsState()
+    val watchlistScrollState = rememberLazyListState()
+    val favoritesScrollState = rememberLazyListState()
+    val recommendedMoviesScrollState = rememberLazyListState()
+
 
     LaunchedEffect(key1 = accessToken) {
         username?.let { accessToken?.let { it1 -> profileViewModel.fetchInitialData(it, it1) } }
     }
 
-    val recommendedMoviesScrollState = rememberLazyListState()
     val fetchNextRecommendedMoviesPage: Boolean by remember {
         derivedStateOf {
             val lastVisibleItem = recommendedMoviesScrollState.layoutInfo
@@ -149,325 +159,434 @@ fun UserProfileScreen(
         profileViewModel.fetchMoreRecommendations()
     }
 
-    LazyColumn(
+    var isRefreshing by remember { mutableStateOf(false) }
+    val refreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                isRefreshing = true
+                username?.let { accessToken?.let { it1 ->
+                    profileViewModel.fetchInitialData(it, it1) }
+                    profileViewModel.fetchInitialRecommendations()
+                }
+                isRefreshing = false
+                watchlistScrollState.scrollToItem(0)
+                favoritesScrollState.scrollToItem(0)
+                recommendedMoviesScrollState.scrollToItem(0)
+            }
+        }
+    )
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = onPrimaryDark),
-        content = {
-            item {
-                TopAppBarWithMenuInit(
-                    authViewModel = authViewModel,
-                    topAppBarState = topAppBarState,
-                    navController = navController,
-                    title = "Profile",
-                    coroutineScope = coroutineScope,
-                    drawerState = drawerState
-                )
-            }
-            item {
-                Spacer(modifier = Modifier.height(60.dp))
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
-                    contentAlignment = Alignment.Center) {
-                    Row(modifier = Modifier
+            .pullRefresh(refreshState)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = onPrimaryDark),
+            content = {
+                item {
+                    TopAppBarWithMenuInit(
+                        authViewModel = authViewModel,
+                        topAppBarState = topAppBarState,
+                        navController = navController,
+                        title = "Profile",
+                        coroutineScope = coroutineScope,
+                        drawerState = drawerState
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.height(60.dp))
+                    Box(modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
-                        .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (userPicture.equals("")) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Profile picture",
-                                tint = Color.LightGray,
-                                modifier = Modifier
-                                    .height(58.dp)
-                                    .width(58.dp)
-                                    .clip(RoundedCornerShape(58.dp))
-                            )
-                        } else {
-                            SubcomposeAsyncImage(
-                                model = userPicture,
-                                contentDescription = "Profile picture",
-                                modifier = Modifier
-                                    .height(58.dp)
-                                    .width(58.dp)
-                                    .clip(RoundedCornerShape(58.dp))
-                            )
-                        }
-                        Column(modifier = Modifier
-                            .fillMaxSize()
-                            .weight(1f)) {
-                            username?.let {
-                                Text(text = it,
-                                    fontSize = 16.sp,
-                                    color = Color.LightGray,
-                                    modifier = Modifier.padding(start = 16.dp, top = 10.dp)
-                                )
-                            }
-                            email?.let {
-                                Text(text = it,
-                                    fontSize = 12.sp,
-                                    color = Color.LightGray,
-                                    modifier = Modifier.padding(start = 16.dp, top = 10.dp)
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier
-                            .height(58.dp)
-                            .width(58.dp)
-                        ) {
-                            IconButton(
-                                onClick = { /*ToDo: Open SettingsScreen */ }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Settings",
-                                    tint= Color.LightGray,
-                                    modifier = Modifier
-                                        .height(88.dp)
-                                        .width(88.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically , modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(5.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            authViewModel.logout(context)
-                            navController.navigate("movies/profile") },
-                        shape = ButtonDefaults.elevatedShape,
-                        colors = ButtonDefaults.buttonColors(primaryContainerDark),
-                        modifier = Modifier
+                        .height(100.dp),
+                        contentAlignment = Alignment.Center) {
+                        Row(modifier = Modifier
                             .fillMaxWidth()
-                            .padding(5.dp)
-                    ) {
-                        Text(
-                            text = "Sign out", fontSize = 20.sp,
-                            color = Color.LightGray)
-                    }
-                }
-            }
-            item {
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Watchlist",
-                            fontSize = 24.sp,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
-                    Column {
-                        Text(text = "Edit Watchlist",
-                            color = primaryContainerLightMediumContrast,
-                            textDecoration = TextDecoration.Underline,
-                            fontSize = 16.sp,
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .clickable { navController.navigate(
-                                    route = "movies/create_list/$username") }
-                        )
-                    }
-
-                }
-                when(val viewState = profileViewState) {
-                    is ProfileViewState.Loading -> {
-                        LoadingState(modifier = Modifier.fillMaxWidth())
-                    }
-                    is ProfileViewState.Success -> {
-                        var showDropDownMenu by remember { mutableStateOf(false) }
-                        var selectedMovieId by remember { mutableLongStateOf(0L) }
-                        if (viewState.watchList.isNotEmpty()){
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .height(282.dp)
-                                .padding(5.dp)
-                                .background(color = primaryLightHighContrast),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                LazyRow {
-                                    items(viewState.watchList) { movie ->
-                                        MovieCard(
-                                            movie = movie,
-                                            onLongClick = {
-                                                showDropDownMenu = true
-                                                selectedMovieId = movie.id },
-                                            onClick = { movieId ->
-                                                navController
-                                                    .navigate("movies/details/$movieId")
-                                            },
-                                            modifier = Modifier
-                                        )
-                                    }
+                            .height(100.dp)
+                            .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (userPicture.equals("")) {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "Profile picture",
+                                    tint = Color.LightGray,
+                                    modifier = Modifier
+                                        .height(58.dp)
+                                        .width(58.dp)
+                                        .clip(RoundedCornerShape(58.dp))
+                                )
+                            } else {
+                                SubcomposeAsyncImage(
+                                    model = userPicture,
+                                    contentDescription = "Profile picture",
+                                    modifier = Modifier
+                                        .height(58.dp)
+                                        .width(58.dp)
+                                        .clip(RoundedCornerShape(58.dp))
+                                )
+                            }
+                            Column(modifier = Modifier
+                                .fillMaxSize()
+                                .weight(1f)) {
+                                username?.let {
+                                    Text(text = it,
+                                        fontSize = 16.sp,
+                                        color = Color.LightGray,
+                                        modifier = Modifier.padding(start = 16.dp, top = 10.dp)
+                                    )
                                 }
-                                DropdownMenu(
-                                    expanded = showDropDownMenu,
-                                    onDismissRequest = { showDropDownMenu = false }) {
-                                    DropdownMenuItem(
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.Clear,
-                                                contentDescription = "Remove icon",
-                                                tint = primaryContainerLightMediumContrast,
-                                                modifier = Modifier.height(33.dp)
-                                            )
-                                        },
-                                        text = { Text("Remove from Watchlist") },
-                                        onClick = {
-                                            username?.let { username ->
-                                                accessToken?.let { token ->
-                                                    profileViewModel.removeMovieFromWatchList(
-                                                        context, selectedMovieId, username, token
-                                                    )
-                                                }
-                                            }
-                                            showDropDownMenu = false
-                                        }
+                                email?.let {
+                                    Text(text = it,
+                                        fontSize = 12.sp,
+                                        color = Color.LightGray,
+                                        modifier = Modifier.padding(start = 16.dp, top = 10.dp)
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(20.dp))
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.AddCircleOutline,
-                                    contentDescription = "Add icon",
-                                    tint = primaryContainerLightMediumContrast,
-                                    modifier = Modifier.height(33.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(text = "No Watchlist yet",
-                                    color = Color.White,
-                                    fontSize = 20.sp)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(text = "Create a Watchlist to keep track of shows and movies "
-                                        + "you want to watch",
-                                    color = Color.LightGray,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(10.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Button(
-                                    onClick = { navController.navigate("movies/create_list/$username") },
-                                    colors = ButtonDefaults.buttonColors(primaryContainerDark)
+                            Column(modifier = Modifier
+                                .height(58.dp)
+                                .width(58.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { /*ToDo: Open SettingsScreen */ }
                                 ) {
-                                    Text(text = "Create a watchlist", color = Color.LightGray)
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                        tint= Color.LightGray,
+                                        modifier = Modifier
+                                            .height(88.dp)
+                                            .width(88.dp)
+                                    )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(10.dp))
-                            HorizontalDivider()
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-                    is ProfileViewState.Error -> {
-                        Text(
-                            text = "Error: ${viewState.msg}",
-                            fontSize = 24.sp,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding(10.dp)
-                        )
                     }
                 }
-            }
-            item {
-                Row {
-                    Column(
-                        modifier = Modifier.weight(1f)
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically ,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .padding(5.dp)
                     ) {
-                        Text(
-                            text = "Favorites",
-                            fontSize = 24.sp,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
-                    Column {
-                        Text(text = "Edit Favorites",
-                            color = primaryContainerLightMediumContrast,
-                            textDecoration = TextDecoration.Underline,
-                            fontSize = 16.sp,
+                        Button(
+                            onClick = {
+                                authViewModel.logout(context)
+                                navController.navigate("movies/profile") },
+                            shape = ButtonDefaults.elevatedShape,
+                            colors = ButtonDefaults.buttonColors(primaryContainerDark),
                             modifier = Modifier
-                                .padding(10.dp)
-                                .clickable { navController.navigate("movies/create_list/$username") }
-                        )
+                                .fillMaxWidth()
+                                .padding(5.dp)
+                        ) {
+                            Text(
+                                text = "Sign out", fontSize = 20.sp,
+                                color = Color.LightGray)
+                        }
                     }
                 }
-                when (val viewState = profileViewState) {
-                    is ProfileViewState.Loading -> {
-                        LoadingState(modifier = Modifier.fillMaxWidth())
-                    }
-                    is ProfileViewState.Success -> {
-                        LaunchedEffect(key1 = Unit) {
-                            profileViewModel.fetchInitialRecommendations()
+                item {
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Watchlist",
+                                fontSize = 24.sp,
+                                color = Color.LightGray,
+                                modifier = Modifier.padding(10.dp)
+                            )
                         }
-                        if (viewState.likedList.isNotEmpty()){
+                        Column {
+                            Text(text = "Edit Watchlist",
+                                color = primaryContainerLightMediumContrast,
+                                textDecoration = TextDecoration.Underline,
+                                fontSize = 16.sp,
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .clickable { navController.navigate(
+                                        route = "movies/create_list/$username") }
+                            )
+                        }
+
+                    }
+                    when(val viewState = profileViewState) {
+                        is ProfileViewState.Loading -> {
+                            LoadingState(modifier = Modifier.fillMaxWidth())
+                        }
+                        is ProfileViewState.Success -> {
                             var showDropDownMenu by remember { mutableStateOf(false) }
                             var selectedMovieId by remember { mutableLongStateOf(0L) }
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .height(282.dp)
-                                .padding(5.dp)
-                                .background(color = primaryLightHighContrast),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                LazyRow {
-                                    items(viewState.likedList) { movie ->
-                                        MovieCard(
-                                            movie = movie,
-                                            onLongClick = {
-                                                showDropDownMenu = true
-                                                selectedMovieId = movie.id },
-                                            onClick = { movieId ->
-                                                navController
-                                                    .navigate("movies/details/$movieId")
-                                            },
-                                            modifier = Modifier
-                                        )
-                                        DropdownMenu(
-                                            expanded = showDropDownMenu,
-                                            onDismissRequest = { showDropDownMenu = false }) {
-                                            DropdownMenuItem(
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Clear,
-                                                        contentDescription = "Remove icon",
-                                                        tint = primaryContainerLightMediumContrast,
-                                                        modifier = Modifier.height(33.dp)
-                                                    )
+                            if (viewState.watchList.isNotEmpty()){
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(282.dp)
+                                    .padding(5.dp)
+                                    .background(color = primaryLightHighContrast),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LazyRow(state = watchlistScrollState) {
+                                        items(viewState.watchList) { movie ->
+                                            MovieCard(
+                                                movie = movie,
+                                                onLongClick = {
+                                                    showDropDownMenu = true
+                                                    selectedMovieId = movie.id },
+                                                onClick = { movieId ->
+                                                    navController
+                                                        .navigate("movies/details/$movieId")
                                                 },
-                                                text = { Text("Remove from Favorites") },
-                                                onClick = {
-                                                    username?.let { username ->
-                                                        accessToken?.let { token ->
-                                                            profileViewModel.removeMovieFromFavorites(
-                                                                context, selectedMovieId, username, token
-                                                            )
-                                                        }
+                                                modifier = Modifier
+                                            )
+                                        }
+                                    }
+                                    DropdownMenu(
+                                        expanded = showDropDownMenu,
+                                        onDismissRequest = { showDropDownMenu = false }) {
+                                        DropdownMenuItem(
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.Clear,
+                                                    contentDescription = "Remove icon",
+                                                    tint = primaryContainerLightMediumContrast,
+                                                    modifier = Modifier.height(33.dp)
+                                                )
+                                            },
+                                            text = { Text("Remove from Watchlist") },
+                                            onClick = {
+                                                username?.let { username ->
+                                                    accessToken?.let { token ->
+                                                        profileViewModel.removeMovieFromWatchList(
+                                                            context, selectedMovieId, username, token
+                                                        )
                                                     }
-                                                    showDropDownMenu = false
                                                 }
+                                                showDropDownMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(20.dp))
+                            } else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.AddCircleOutline,
+                                        contentDescription = "Add icon",
+                                        tint = primaryContainerLightMediumContrast,
+                                        modifier = Modifier.height(33.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(text = "No Watchlist yet",
+                                        color = Color.White,
+                                        fontSize = 20.sp)
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(text = "Create a Watchlist to keep track of shows and movies "
+                                            + "you want to watch",
+                                        color = Color.LightGray,
+                                        fontSize = 16.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Button(
+                                        onClick = { navController.navigate("movies/create_list/$username") },
+                                        colors = ButtonDefaults.buttonColors(primaryContainerDark)
+                                    ) {
+                                        Text(text = "Create a watchlist", color = Color.LightGray)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                HorizontalDivider()
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                        is ProfileViewState.Error -> {
+                            Text(
+                                text = "Error: ${viewState.msg}",
+                                fontSize = 24.sp,
+                                color = Color.LightGray,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    }
+                }
+                item {
+                    Row {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Favorites",
+                                fontSize = 24.sp,
+                                color = Color.LightGray,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                        Column {
+                            Text(text = "Edit Favorites",
+                                color = primaryContainerLightMediumContrast,
+                                textDecoration = TextDecoration.Underline,
+                                fontSize = 16.sp,
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .clickable { navController.navigate("movies/create_list/$username") }
+                            )
+                        }
+                    }
+                    when (val viewState = profileViewState) {
+                        is ProfileViewState.Loading -> {
+                            LoadingState(modifier = Modifier.fillMaxWidth())
+                        }
+                        is ProfileViewState.Success -> {
+                            if (viewState.likedList.isNotEmpty()){
+                                var showDropDownMenu by remember { mutableStateOf(false) }
+                                var selectedMovieId by remember { mutableLongStateOf(0L) }
+
+                                LaunchedEffect(key1 = Unit) {
+                                    profileViewModel.fetchInitialRecommendations()
+                                }
+
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(282.dp)
+                                    .padding(5.dp)
+                                    .background(color = primaryLightHighContrast),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LazyRow(state = favoritesScrollState) {
+                                        items(viewState.likedList) { movie ->
+                                            MovieCard(
+                                                movie = movie,
+                                                onLongClick = {
+                                                    showDropDownMenu = true
+                                                    selectedMovieId = movie.id },
+                                                onClick = { movieId ->
+                                                    navController
+                                                        .navigate("movies/details/$movieId")
+                                                },
+                                                modifier = Modifier
+                                            )
+                                            DropdownMenu(
+                                                expanded = showDropDownMenu,
+                                                onDismissRequest = { showDropDownMenu = false }) {
+                                                DropdownMenuItem(
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Clear,
+                                                            contentDescription = "Remove icon",
+                                                            tint = primaryContainerLightMediumContrast,
+                                                            modifier = Modifier.height(33.dp)
+                                                        )
+                                                    },
+                                                    text = { Text("Remove from Favorites") },
+                                                    onClick = {
+                                                        username?.let { username ->
+                                                            accessToken?.let { token ->
+                                                                profileViewModel.removeMovieFromFavorites(
+                                                                    context, selectedMovieId, username, token
+                                                                )
+                                                            }
+                                                        }
+                                                        showDropDownMenu = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(20.dp))
+                            }
+                            else {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.AddCircleOutline,
+                                        contentDescription = "Add icon",
+                                        tint = primaryContainerLightMediumContrast,
+                                        modifier = Modifier.height(33.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "No Favorites yet",
+                                        color = Color.White,
+                                        fontSize = 20.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Create Favorites list to get suitable recommendations",
+                                        color = Color.LightGray,
+                                        fontSize = 16.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Button(
+                                        onClick = { navController.navigate("movies/create_list/$username") },
+                                        colors = ButtonDefaults.buttonColors(primaryContainerDark)
+                                    ) {
+                                        Text(text = "Create Favorites list", color = Color.LightGray)
+                                    }
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+
+                        is ProfileViewState.Error -> {
+                            Text(
+                                text = "Error: ${viewState.msg}",
+                                fontSize = 24.sp,
+                                color = Color.LightGray,
+                                modifier = Modifier.padding(10.dp)
+                            )
+                        }
+                    }
+                }
+                item {
+                    Text(
+                        text = "Recommended",
+                        fontSize = 24.sp,
+                        color = Color.LightGray,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                    when (val viewState = recommendationsViewState){
+                        is RecommendationsViewState.Loading -> {
+                            LoadingState(modifier = Modifier.fillMaxWidth())
+                        }
+                        is RecommendationsViewState.Success -> {
+                            if (viewState.recommendedMoviesList.isNotEmpty()){
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(282.dp)
+                                    .padding(5.dp)
+                                    .background(color = primaryLightHighContrast),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    LazyRow(
+                                        state = recommendedMoviesScrollState
+                                    ) {
+                                        items(viewState.recommendedMoviesList) { movie ->
+                                            MovieCard(
+                                                movie = movie,
+                                                onLongClick = { },
+                                                onClick = { movieId ->
+                                                    navController
+                                                        .navigate("movies/details/$movieId")
+                                                },
+                                                modifier = Modifier
                                             )
                                         }
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(20.dp))
                             }
-                            Spacer(modifier = Modifier.height(20.dp))
                         }
-                        else {
+                        is RecommendationsViewState.Error -> {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     imageVector = Icons.Default.AddCircleOutline,
@@ -477,13 +596,13 @@ fun UserProfileScreen(
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Text(
-                                    text = "No Favorites yet",
+                                    text = "Recommendations not available",
                                     color = Color.White,
                                     fontSize = 20.sp
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "Create Favorites list to get suitable recommendations",
+                                    text = "Add movies to Favorites in order to get suitable recommendations",
                                     color = Color.LightGray,
                                     fontSize = 16.sp,
                                     textAlign = TextAlign.Center,
@@ -494,98 +613,22 @@ fun UserProfileScreen(
                                     onClick = { navController.navigate("movies/create_list/$username") },
                                     colors = ButtonDefaults.buttonColors(primaryContainerDark)
                                 ) {
-                                    Text(text = "Create Favorites list", color = Color.LightGray)
+                                    Text(text = "Create list", color = Color.LightGray)
                                 }
-                                HorizontalDivider()
                             }
                         }
+                        RecommendationsViewState.Empty -> {}
                     }
+                }
+            }
+        )
 
-                    is ProfileViewState.Error -> {
-                        Text(
-                            text = "Error: ${viewState.msg}",
-                            fontSize = 24.sp,
-                            color = Color.LightGray,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
-                }
-            }
-            item {
-                Text(
-                    text = "Recommended",
-                    fontSize = 24.sp,
-                    color = Color.LightGray,
-                    modifier = Modifier.padding(10.dp)
-                )
-                when (val viewState = recommendationsViewState){
-                    is RecommendationsViewState.Loading -> {
-                        LoadingState(modifier = Modifier.fillMaxWidth())
-                    }
-                    is RecommendationsViewState.Success -> {
-                        if (viewState.recommendedMoviesList.isNotEmpty()){
-                            Box(modifier = Modifier
-                                .fillMaxWidth()
-                                .height(282.dp)
-                                .padding(5.dp)
-                                .background(color = primaryLightHighContrast),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                LazyRow(
-                                    state = recommendedMoviesScrollState
-                                ) {
-                                    items(viewState.recommendedMoviesList) { movie ->
-                                        MovieCard(
-                                            movie = movie,
-                                            onLongClick = { }, // ToDo: Handle long click
-                                            onClick = { movieId ->
-                                                navController
-                                                    .navigate("movies/details/$movieId")
-                                            },
-                                            modifier = Modifier
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(20.dp))
-                        }
-                    }
-                    is RecommendationsViewState.Error -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.AddCircleOutline,
-                                contentDescription = "Add icon",
-                                tint = primaryContainerLightMediumContrast,
-                                modifier = Modifier.height(33.dp)
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "Recommendations not available",
-                                color = Color.White,
-                                fontSize = 20.sp
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Add movies to Favorites in order to get suitable recommendations",
-                                color = Color.LightGray,
-                                fontSize = 16.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(10.dp)
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(
-                                onClick = { navController.navigate("movies/create_list/$username") },
-                                colors = ButtonDefaults.buttonColors(primaryContainerDark)
-                            ) {
-                                Text(text = "Create list", color = Color.LightGray)
-                            }
-                        }
-                    }
-                    RecommendationsViewState.Empty -> {}
-                }
-            }
-        }
-    )
+        PullRefreshIndicator(
+            refreshing = isRefreshing,
+            state = refreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+    }
 }
 
 @Composable

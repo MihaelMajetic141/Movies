@@ -43,7 +43,7 @@ class ProfileViewModel @Inject constructor(
         _recommendationsViewState.asStateFlow()
 
     private val _movieForRecommendationId: MutableStateFlow<Long> = MutableStateFlow(0)
-    var movieForRecommendationId: StateFlow<Long> = _movieForRecommendationId
+    var movieForRecommendationId: StateFlow<Long> = _movieForRecommendationId.asStateFlow()
 
     suspend fun fetchInitialData(username: String, accessToken: String) = viewModelScope.launch {
         try {
@@ -113,8 +113,10 @@ class ProfileViewModel @Inject constructor(
                 )
                 _profileViewState.update {
                     val currentWatchlist = (it as? ProfileViewState.Success)?.watchList?: emptyList()
+                    val currentLikedList = (it as? ProfileViewState.Success)?.likedList?: emptyList()
                     return@update ProfileViewState.Success(
-                        watchList = currentWatchlist + newMovie
+                        watchList = currentWatchlist + newMovie,
+                        likedList = currentLikedList
                     )
                 }
                 Toast.makeText(context, "Movie added to Watchlist!", Toast.LENGTH_SHORT).show()
@@ -130,16 +132,17 @@ class ProfileViewModel @Inject constructor(
         context: Context,
         movieId: Long,
         username: String,
-        accessToken: String
-    ) = viewModelScope.launch {
+        accessToken: String) = viewModelScope.launch {
         try {
             val newMovie = movieRepository.addMovieToLikedList(
                 movieId = movieId, username = username, token = "Bearer $accessToken"
             )
             _profileViewState.update {
-                val currentFavorites = (it as? ProfileViewState.Success)?.likedList?: emptyList()
+                val currentWatchlist = (it as? ProfileViewState.Success)?.watchList?: emptyList()
+                val currentLikedList = (it as? ProfileViewState.Success)?.likedList?: emptyList()
                 return@update ProfileViewState.Success(
-                    likedList = currentFavorites + newMovie
+                    likedList = currentLikedList + newMovie,
+                    watchList = currentWatchlist
                 )
             }
             Toast.makeText(context, "Movie added to Favorites!", Toast.LENGTH_SHORT).show()
